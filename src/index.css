@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --arc-bg: #0b0e13;
+  --arc-sidebar: #10141b;
+  --arc-surface: #171c25;
+  --arc-hover: #1d2430;
+  --arc-active: #202a38;
+  --arc-border: rgba(190, 205, 225, 0.09);
+  --arc-accent: #9bbcff;
+  --arc-text: #eef2f8;
+  --arc-muted: #929baa;
+}
+
+body {
+  color-scheme: dark;
+  margin: 0;
+  padding: 0;
+  background-color: var(--arc-bg);
+  color: var(--arc-text);
+  font-family: 'Inter', 'Segoe UI Variable', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  font-size: 13px;
+  letter-spacing: 0.005em;
+}
+
+/* Allow text selection where needed (URL, inputs, search results, webviews) */
+input,
+textarea,
+webview,
+.select-text,
+[contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Electron Draggable Regions */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(190, 205, 225, 0.28);
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(125, 166, 235, 0.32);
+  color: #f7f9ff;
+}
+
+/* Tab & Modal Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.12s ease-out forwards;
+}
+
+/* Keyboard Focus Accessibility */
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.7);
+  outline-offset: 1px;
+}
+
+/* Respect User Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
