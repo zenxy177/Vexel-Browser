@@ -60,15 +60,36 @@ ZNY Browser; Electron ve React ile geliştirilmiş, Arc Browser'ın modern dikey
 | Kısayol | İşlev |
 | :--- | :--- |
 | `Ctrl + T` | **Yeni Sekme:** Doğrudan yeni bir sekme oluşturur ve odaklar |
-| `Ctrl + K` | **Arc Komut Paleti:** Google araması yapın, açık sekmeleri bulun veya URL açın |
-| `Ctrl + L` | Adres çubuğuna odaklanır ve mevcut adresi seçer |
-| `Ctrl + R` | Etkin sayfayı yeniler |
-| `Ctrl + W` | **Sekmeyi Kapat:** Mevcut aktif sekmeyi kapatır |
+| `Ctrl + K` / `Ctrl + E` | **Komut Paleti:** Google araması yapın, açık sekmeleri bulun veya URL açın |
+| `Ctrl + L` / `Alt + D` / `F6` | Adres çubuğuna odaklanır ve mevcut adresi seçer |
+| `Alt + Enter` (adres çubuğunda) | Yazılan URL'yi veya aramayı yeni sekmede açar |
+| `Ctrl + Enter` (adres çubuğunda) | Tek kelimeyi `www.<kelime>.com` olarak açar |
+| `Ctrl + Tab` / `Ctrl + Page Down` | Etkin çalışma alanındaki sonraki sekmeye geçer |
+| `Ctrl + Shift + Tab` / `Ctrl + Page Up` | Etkin çalışma alanındaki önceki sekmeye geçer |
+| `Ctrl + 1` – `Ctrl + 8` | Etkin çalışma alanındaki ilgili sekmeye geçer |
+| `Ctrl + 9` | Etkin çalışma alanındaki son sekmeye geçer |
+| `Ctrl + W` / `Ctrl + F4` | Etkin sekmeyi kapatır |
+| `Ctrl + Shift + W` | Tarayıcı penceresini kapatır |
 | `Ctrl + Shift + T` | Son kapatılan sekmeyi yeniden açar |
+| `Alt + Sol` / `Alt + Sağ` | Etkin sekmede geri / ileri gider |
+| `Alt + Home` | Google ana sayfasını açar |
+| `Ctrl + R` / `F5` | Etkin sayfayı yeniler |
+| `Ctrl + Shift + R` | Önbelleği yok sayarak sayfayı yeniler |
+| `Ctrl + +` / `Ctrl + -` / `Ctrl + 0` | Sayfayı yakınlaştırır / uzaklaştırır / varsayılana sıfırlar |
+| `Ctrl + Fare Tekerleği` | Sayfayı yakınlaştırır veya uzaklaştırır |
+| `F11` | Tam ekranı açar veya kapatır |
+| `Ctrl + D` | Etkin sayfayı yer imlerine ekler |
+| `Ctrl + Shift + D` | Etkin çalışma alanındaki sekmeleri yer imlerine ekler |
+| `Ctrl + Shift + O` | Kenar çubuğunda Yer İmleri görünümünü açar |
 | `Ctrl + H` | Aranabilir gezinme geçmişini açar |
 | `Ctrl + F` | Açık sayfada metin arar |
+| `Ctrl + G` / `F3` | Sayfa içi aramada sonraki eşleşmeye gider |
+| `Ctrl + Shift + G` / `Shift + F3` | Sayfa içi aramada önceki eşleşmeye gider |
 | `Ctrl + J` | İndirme yöneticisini açar |
 | `Esc` | Açık olan modalları, çeviri panelini ve komut paletini kapatır |
+| Bağlantıda `Ctrl + tıklama` / orta tık | Bağlantıyı arka planda yeni sekmede açar |
+| Bağlantıda `Ctrl + Shift + tıklama` | Bağlantıyı önde yeni sekmede açar |
+| Sekmede orta tık | Sekmeyi kapatır |
 
 ---
 
@@ -80,7 +101,7 @@ ZNY Browser'ı başlatmak için klasördeki `launch-zny-browser.bat` dosyasına 
 # Bağımlılıkları yükleme
 npm install
 
-# Saf mantık birim testlerini çalıştırma (51 test)
+# Saf mantık birim testlerini çalıştırma (44 test)
 npm test
 
 # TypeScript tip kontrolü

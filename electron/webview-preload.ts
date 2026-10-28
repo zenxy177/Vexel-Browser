@@ -23,6 +23,12 @@ document.addEventListener('mouseup', (e) => {
   }
 });
 
+document.addEventListener('wheel', (event) => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  ipcRenderer.sendToHost('browser-zoom', event.deltaY);
+}, { passive: false });
+
 // Full page translation trigger listener
 ipcRenderer.on('translate-page-to-tr', () => {
   const scriptId = 'zny-google-translate-script';

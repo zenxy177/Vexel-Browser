@@ -86,6 +86,8 @@ export const App: React.FC = () => {
   });
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [bookmarksViewRequest, setBookmarksViewRequest] = useState(0);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Restore tabs from localStorage
   const [tabs, setTabs] = useState<Tab[]>(() => {
@@ -173,7 +175,7 @@ export const App: React.FC = () => {
   const [isSplitView, setIsSplitView] = useState(false);
   const [popupTabIds, setPopupTabIds] = useState<Set<string>>(() => new Set());
   const popupTabTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const handleNewTabRef = useRef<(url?: string, isPopup?: boolean) => void>(() => {});
+  const handleNewTabRef = useRef<(url?: string, isPopup?: boolean, shouldFocus?: boolean) => void>(() => {});
   const closedTabsRef = useRef<Tab[]>([]);
 
   // Modals & Overlays
@@ -492,8 +494,8 @@ export const App: React.FC = () => {
   // Safe window.open / popup handling routed to new tabs
   useEffect(() => {
     if (window.znyAPI?.onOpenNewTab) {
-      const unsubscribe = window.znyAPI.onOpenNewTab((url: string, isPopup: boolean) => {
-        handleNewTabRef.current(url, isPopup);
+      const unsubscribe = window.znyAPI.onOpenNewTab((url: string, isPopup: boolean, shouldFocus: boolean) => {
+        handleNewTabRef.current(url, isPopup, shouldFocus);
       });
       return () => {
         if (typeof unsubscribe === 'function') unsubscribe();
@@ -585,7 +587,7 @@ export const App: React.FC = () => {
   };
 
 
-  const handleNewTab = useCallback((url = 'https://www.google.com/', isPopup = false) => {
+  const handleNewTab = useCallback((url = 'https://www.google.com/', isPopup = false, shouldFocus = true) => {
     const newTabId = generateTabId();
     const newTab: Tab = {
       id: newTabId,
@@ -599,9 +601,8 @@ export const App: React.FC = () => {
       canGoBack: false,
       canGoForward: false,
     };
-
     setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTabId);
+    if (shouldFocus) setActiveTabId(newTabId);
     if (isPopup) {
       setPopupTabIds(prev => new Set(prev).add(newTabId));
       const timeout = setTimeout(() => {
@@ -778,6 +779,27 @@ export const App: React.FC = () => {
     setBookmarks(prev => prev.filter(b => b.id !== id));
   };
 
+  const saveBookmark = (tab: Tab) => {
+    if (!/^https?:\/\//i.test(tab.url)) return;
+    const now = Date.now();
+    setBookmarks(prev => deduplicateBookmarks([{
+      id: `bookmark-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      title: tab.title || tab.url,
+      url: tab.url,
+      dateAdded: now,
+    }], prev));
+  };
+
+  const selectRelativeTab = (direction: 1 | -1) => {
+    const spaceTabs = tabs
+      .filter(tab => tab.spaceId === activeSpaceId)
+      .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
+    if (spaceTabs.length < 2) return;
+    const activeIndex = spaceTabs.findIndex(tab => tab.id === activeTabId);
+    const nextIndex = (activeIndex + direction + spaceTabs.length) % spaceTabs.length;
+    handleSelectTab(spaceTabs[nextIndex].id);
+  };
+
   useEffect(() => {
     if (!window.znyAPI?.onBrowserShortcut) return;
     return window.znyAPI.onBrowserShortcut((shortcut) => {
@@ -816,9 +838,94 @@ export const App: React.FC = () => {
         case 'downloads':
           setIsDownloadsOpen(true);
           break;
+        case 'next-tab':
+          selectRelativeTab(1);
+          break;
+        case 'previous-tab':
+          selectRelativeTab(-1);
+          break;
+        case 'select-last-tab':
+        case 'select-tab-1':
+        case 'select-tab-2':
+        case 'select-tab-3':
+        case 'select-tab-4':
+        case 'select-tab-5':
+        case 'select-tab-6':
+        case 'select-tab-7':
+        case 'select-tab-8': {
+          const currentSpaceTabs = tabs
+            .filter(tab => tab.spaceId === activeSpaceId)
+            .sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
+          const targetIndex = shortcut === 'select-last-tab'
+            ? currentSpaceTabs.length - 1
+            : Number(shortcut.slice('select-tab-'.length)) - 1;
+          if (currentSpaceTabs[targetIndex]) handleSelectTab(currentSpaceTabs[targetIndex].id);
+          break;
+        }
+        case 'navigate-back':
+          window.dispatchEvent(new CustomEvent('zny-navigate-back'));
+          break;
+        case 'navigate-forward':
+          window.dispatchEvent(new CustomEvent('zny-navigate-forward'));
+          break;
+        case 'hard-reload':
+          window.dispatchEvent(new CustomEvent('zny-hard-reload-active-tab'));
+          break;
+        case 'find-next':
+          window.dispatchEvent(new CustomEvent('zny-find-next'));
+          break;
+        case 'find-previous':
+          window.dispatchEvent(new CustomEvent('zny-find-previous'));
+          break;
+        case 'zoom-in':
+        case 'zoom-out':
+        case 'zoom-reset':
+          window.dispatchEvent(new CustomEvent('zny-zoom-active-tab', { detail: shortcut }));
+          break;
+        case 'bookmark-page': {
+          const active = tabs.find(tab => tab.id === activeTabId);
+          if (active) saveBookmark(active);
+          break;
+        }
+        case 'bookmark-all-tabs': {
+          const now = Date.now();
+          const currentSpaceTabs = tabs.filter(tab => tab.spaceId === activeSpaceId && /^https?:\/\//i.test(tab.url));
+          const additions = currentSpaceTabs.map((tab, index) => ({
+            id: `bookmark-${now}-${index}`,
+            title: tab.title || tab.url,
+            url: tab.url,
+            dateAdded: now,
+          }));
+          setBookmarks(prev => deduplicateBookmarks(additions, prev));
+          break;
+        }
+        case 'open-bookmarks':
+          setIsSidebarCollapsed(false);
+          setBookmarksViewRequest(request => request + 1);
+          break;
+        case 'open-address-new-tab':
+          window.dispatchEvent(new CustomEvent('zny-open-address-new-tab'));
+          break;
+        case 'go-home': {
+          const active = tabs.find(tab => tab.id === activeTabId);
+          if (active) handleUpdateTab(active.id, {
+            url: 'https://www.google.com/',
+            isHibernated: false,
+            errorMessage: undefined,
+          });
+          break;
+        }
+        case 'close-window':
+          window.znyAPI.close().catch(error => reportAppError('Pencere kapatılamadı.', error));
+          break;
       }
     });
-  }, [activeTabId, handleNewTab, tabs, activeSpaceId]);
+  }, [activeTabId, activeSpaceId, handleNewTab, handleSelectTab, handleUpdateTab, reportAppError, tabs]);
+
+  useEffect(() => {
+    if (!window.znyAPI?.onFullscreenChanged) return;
+    return window.znyAPI.onFullscreenChanged(setIsFullScreen);
+  }, []);
 
   const handleToggleShield = async () => {
     if (!window.znyAPI?.setShieldActive) {
@@ -896,7 +1003,7 @@ export const App: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0b0e13] text-gray-100 overflow-hidden font-sans">
       {/* 1. Custom Frameless Titlebar */}
-      <Titlebar
+      {!isFullScreen && <Titlebar
         onOpenSecurity={() => setIsSecurityOpen(true)}
         onOpenGoogleHub={() => setIsGoogleHubOpen(true)}
         onError={reportAppError}
@@ -904,7 +1011,7 @@ export const App: React.FC = () => {
         totalTabs={tabs.length}
         hibernatedTabs={hibernatedTabsCount}
         memoryMetrics={memoryMetrics}
-      />
+      />}
       {appError && (
         <div
           role="alert"
@@ -924,9 +1031,10 @@ export const App: React.FC = () => {
 
       {/* 2. Main Body: Sidebar + Multi-View WebViews Container */}
       <div className="flex-1 flex overflow-hidden relative">
-        <Sidebar
+        {!isFullScreen && <Sidebar
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+          bookmarksViewRequest={bookmarksViewRequest}
           spaces={spaces}
           activeSpaceId={activeSpaceId}
           onSelectSpace={handleSelectSpace}
@@ -945,7 +1053,7 @@ export const App: React.FC = () => {
           bookmarks={bookmarks}
           onSelectBookmark={handleSelectBookmark}
           onDeleteBookmark={handleDeleteBookmark}
-        />
+        />}
 
         <DownloadsModal
           isOpen={isDownloadsOpen}
@@ -962,6 +1070,7 @@ export const App: React.FC = () => {
           activeTab={activeTab}
           splitTab={splitTab}
           isSplitView={isSplitView}
+          isFullScreen={isFullScreen}
           selectionTranslationEnabled={privacySettings.selectionTranslationEnabled}
           onUpdateTab={handleUpdateTab}
           onCloseSplitView={handleCloseSplitView}

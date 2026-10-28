@@ -1,6 +1,6 @@
 {
   "name": "zny-browser",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "ZNY Browser - Arc-Style Ultra-Fast Chromium Browser",
   "type": "module",
   "main": "dist-electron/main.js",

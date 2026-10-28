@@ -142,6 +142,12 @@ const WebviewTabItem = memo(function WebviewTabItem({
     };
 
     const handleIpcMessage = async (e: any) => {
+      if (e.channel === 'browser-zoom') {
+        const zoomFactor = webview.getZoomFactor?.() ?? 1;
+        const nextFactor = e.args[0] < 0 ? zoomFactor * 1.1 : zoomFactor / 1.1;
+        webview.setZoomFactor?.(Math.min(5, Math.max(0.25, nextFactor)));
+        return;
+      }
       if (!selectionTranslationEnabled) return;
       if (e.channel === 'text-selected') {
         const { text, clientX, clientY } = e.args[0];
@@ -313,6 +319,7 @@ interface WebViewContainerProps {
   activeTab: Tab | undefined;
   splitTab?: Tab | undefined;
   isSplitView: boolean;
+  isFullScreen: boolean;
   selectionTranslationEnabled?: boolean;
   onUpdateTab: (tabId: string, updates: Partial<Tab>) => void;
   onCloseSplitView: () => void;
@@ -329,6 +336,7 @@ export const WebViewContainer = memo(function WebViewContainer({
   activeTab,
   splitTab,
   isSplitView,
+  isFullScreen,
   selectionTranslationEnabled = true,
   onUpdateTab,
   onCloseSplitView,
@@ -509,7 +517,31 @@ export const WebViewContainer = memo(function WebViewContainer({
   useEffect(() => {
     const focusAddress = () => setIsEditingUrl(true);
     const reloadActiveTab = () => handleReload();
+    const hardReloadActiveTab = () => getActiveWebview()?.reloadIgnoringCache?.();
+    const navigateBack = () => handleGoBack();
+    const navigateForward = () => handleGoForward();
     const openFindInPage = () => openFind();
+    const findNext = () => {
+      if (isFindOpen) moveFindMatch(true);
+      else openFind();
+    };
+    const findPrevious = () => {
+      if (isFindOpen) moveFindMatch(false);
+      else openFind();
+    };
+    const zoomActiveTab = (event: Event) => {
+      const direction = (event as CustomEvent<string>).detail;
+      const webview = getActiveWebview();
+      if (!webview) return;
+      const current = webview.getZoomFactor?.() ?? 1;
+      const next = direction === 'zoom-reset'
+        ? 1
+        : direction === 'zoom-in' ? current * 1.1 : current / 1.1;
+      webview.setZoomFactor?.(Math.min(5, Math.max(0.25, next)));
+    };
+    const openAddressInNewTab = () => {
+      if (urlInput.trim()) onNewTab(normalizeUrlOrSearch(urlInput));
+    };
     const handleFindResult = (event: Event) => {
       const { tabId, activeMatchOrdinal, matches } = (event as CustomEvent<{
         tabId: string;
@@ -522,15 +554,29 @@ export const WebViewContainer = memo(function WebViewContainer({
     };
     window.addEventListener('zny-focus-address', focusAddress);
     window.addEventListener('zny-reload-active-tab', reloadActiveTab);
+    window.addEventListener('zny-hard-reload-active-tab', hardReloadActiveTab);
+    window.addEventListener('zny-navigate-back', navigateBack);
+    window.addEventListener('zny-navigate-forward', navigateForward);
     window.addEventListener('zny-open-find', openFindInPage);
+    window.addEventListener('zny-find-next', findNext);
+    window.addEventListener('zny-find-previous', findPrevious);
+    window.addEventListener('zny-zoom-active-tab', zoomActiveTab);
+    window.addEventListener('zny-open-address-new-tab', openAddressInNewTab);
     window.addEventListener('zny-found-in-page', handleFindResult);
     return () => {
       window.removeEventListener('zny-focus-address', focusAddress);
       window.removeEventListener('zny-reload-active-tab', reloadActiveTab);
+      window.removeEventListener('zny-hard-reload-active-tab', hardReloadActiveTab);
+      window.removeEventListener('zny-navigate-back', navigateBack);
+      window.removeEventListener('zny-navigate-forward', navigateForward);
       window.removeEventListener('zny-open-find', openFindInPage);
+      window.removeEventListener('zny-find-next', findNext);
+      window.removeEventListener('zny-find-previous', findPrevious);
+      window.removeEventListener('zny-zoom-active-tab', zoomActiveTab);
+      window.removeEventListener('zny-open-address-new-tab', openAddressInNewTab);
       window.removeEventListener('zny-found-in-page', handleFindResult);
     };
-  }, [activeTab?.id, openFind]);
+  }, [activeTab?.id, findQuery, isFindOpen, onNewTab, openFind, urlInput]);
 
   useEffect(() => {
     if (!isFindOpen) return;
@@ -653,7 +699,7 @@ export const WebViewContainer = memo(function WebViewContainer({
   return (
     <div className="flex-1 flex flex-col bg-[#0b0e13] overflow-hidden relative">
       {/* Top Navigation Bar / Arc Pill Bar */}
-      <div className="h-[54px] bg-[#0e1218] border-b border-white/[0.055] flex items-center justify-between px-4 gap-3 select-none min-w-0 relative">
+      {!isFullScreen && <div className="h-[54px] bg-[#0e1218] border-b border-white/[0.055] flex items-center justify-between px-4 gap-3 select-none min-w-0 relative">
         {/* Navigation Controls */}
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
@@ -715,6 +761,17 @@ export const WebViewContainer = memo(function WebViewContainer({
                   if (e.key === 'Escape') {
                     setIsEditingUrl(false);
                     setUrlInput(activeTab.url);
+                  } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    const input = urlInput.trim();
+                    if (/^[a-z0-9-]+$/i.test(input) && activeTab) {
+                      e.preventDefault();
+                      setIsEditingUrl(false);
+                      onUpdateTab(activeTab.id, {
+                        url: `https://www.${input}.com`,
+                        isHibernated: false,
+                        errorMessage: undefined,
+                      });
+                    }
                   }
                 }}
                 onBlur={() => setIsEditingUrl(false)}
@@ -770,7 +827,7 @@ export const WebViewContainer = memo(function WebViewContainer({
             <div className="h-full bg-[#a9c5f3] w-1/3 animate-pulse rounded-r" />
           </div>
         )}
-      </div>
+      </div>}
 
       {isFindOpen && (
         <div className="absolute right-4 top-[62px] z-40 flex w-[min(420px,calc(100%-2rem))] items-center gap-2 rounded-xl border border-white/10 bg-[#141a23] p-2 shadow-2xl">

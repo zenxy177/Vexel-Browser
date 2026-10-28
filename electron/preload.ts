@@ -51,8 +51,9 @@ contextBridge.exposeInMainWorld('znyAPI', {
   },
 
   // Open in new tab listener from web contents popup handler
-  onOpenNewTab: (callback: (url: string, isPopup: boolean) => void) => {
-    const handler = (_: Electron.IpcRendererEvent, url: string, isPopup: boolean) => callback(url, isPopup);
+  onOpenNewTab: (callback: (url: string, isPopup: boolean, shouldFocus: boolean) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, url: string, isPopup: boolean, shouldFocus: boolean) =>
+      callback(url, isPopup, shouldFocus);
     ipcRenderer.on('open-new-tab', handler);
     return () => {
       ipcRenderer.removeListener('open-new-tab', handler);
@@ -67,6 +68,11 @@ contextBridge.exposeInMainWorld('znyAPI', {
     const handler = (_: Electron.IpcRendererEvent, shortcut: string) => callback(shortcut);
     ipcRenderer.on('browser-shortcut', handler);
     return () => ipcRenderer.removeListener('browser-shortcut', handler);
+  },
+  onFullscreenChanged: (callback: (isFullscreen: boolean) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, isFullscreen: boolean) => callback(isFullscreen);
+    ipcRenderer.on('fullscreen-changed', handler);
+    return () => ipcRenderer.removeListener('fullscreen-changed', handler);
   },
 
   // Path to webview preload

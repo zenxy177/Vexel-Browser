@@ -164,9 +164,10 @@ declare global {
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
-      onOpenNewTab: (callback: (url: string, isPopup: boolean) => void) => () => void;
+      onOpenNewTab: (callback: (url: string, isPopup: boolean, shouldFocus: boolean) => void) => () => void;
       onBlockedMainFrameNavigation: (callback: (webContentsId: number) => void) => () => void;
       onBrowserShortcut: (callback: (shortcut: string) => void) => () => void;
+      onFullscreenChanged: (callback: (isFullscreen: boolean) => void) => () => void;
       getWebviewPreloadPath: () => Promise<string>;
       getWebviewPreloadPathSync: () => string;
       getDownloads: () => Promise<BrowserDownload[]>;

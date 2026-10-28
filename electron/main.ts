@@ -11,6 +11,7 @@ import { getChromeProfilePath, getChromeProfiles } from './chrome-profiles';
 import { isAllowedWebviewSource, isSafeWebUrl, isTrustedAppFrameUrl } from './security-policy';
 import { AdBlockerStats, BrowserDownload } from './types';
 import { getPermissionLabel, getSecurePermissionOrigin, isSitePermission } from './site-permissions';
+import { getBrowserShortcut } from './shortcut-logic';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -231,6 +232,12 @@ async function createWindow() {
       sandbox: true,
       spellcheck: true,
     },
+  });
+  mainWindow.on('enter-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('fullscreen-changed', true);
+  });
+  mainWindow.on('leave-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('fullscreen-changed', false);
   });
 
   // Initialize ad blocker on default session
@@ -692,25 +699,16 @@ ipcMain.handle('show-download-in-folder', (event, id: string) => {
 // Intercept popups / window.open across all WebContents and route to new tabs safely
 app.on('web-contents-created', (_, contents) => {
   contents.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown' || input.alt || !(input.control || input.meta)) return;
-
-    const key = input.key.toLowerCase();
-    const shortcuts: Record<string, string> = {
-      k: 'command-palette',
-      t: 'new-tab',
-      w: 'close-tab',
-      h: 'history',
-      l: 'focus-address',
-      r: 'reload',
-      f: 'find-in-page',
-      j: 'downloads',
-    };
-    const shortcut = input.shift && key === 't' ? 'reopen-closed-tab' : shortcuts[key];
-
+    if (input.type !== 'keyDown') return;
+    const shortcut = getBrowserShortcut(input);
     if (!shortcut) return;
+    if (shortcut === 'open-address-new-tab' && contents !== mainWindow?.webContents) return;
     event.preventDefault();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('browser-shortcut', shortcut);
+      if (shortcut === 'toggle-fullscreen') {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      }
     }
   });
 
@@ -747,12 +745,12 @@ app.on('web-contents-created', (_, contents) => {
   });
 
   // Window open guard: Only allow safe http/https popups to be opened as new tabs
-  contents.setWindowOpenHandler(({ url }) => {
+  contents.setWindowOpenHandler(({ url, disposition }) => {
     try {
       const parsed = new URL(url);
       if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && mainWindow && !mainWindow.isDestroyed()) {
         if (!adBlocker.shouldBlockPopup(contents.getURL(), url)) {
-          mainWindow.webContents.send('open-new-tab', url, true);
+          mainWindow.webContents.send('open-new-tab', url, true, disposition !== 'background-tab');
         }
       }
     } catch {

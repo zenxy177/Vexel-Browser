@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Search, Plus, Columns, Globe, 
   X, Moon, FolderDown, ChevronLeft, ChevronRight,
@@ -10,6 +10,7 @@ import { Tab, Space, Bookmark } from '../types';
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  bookmarksViewRequest: number;
   spaces: Space[];
   activeSpaceId: string;
   onSelectSpace: (id: string) => void;
@@ -33,6 +34,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
+  bookmarksViewRequest,
   spaces,
   activeSpaceId,
   onSelectSpace,
@@ -54,6 +56,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [activeView, setActiveView] = useState<'tabs' | 'bookmarks'>('tabs');
   const [bookmarkSearch, setBookmarkSearch] = useState('');
+
+  useEffect(() => {
+    if (bookmarksViewRequest > 0) setActiveView('bookmarks');
+  }, [bookmarksViewRequest]);
+
+  const handleTabAuxClick = (event: React.MouseEvent, tabId: string) => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    onCloseTab(tabId);
+  };
 
   const currentSpaceTabs = tabs.filter(t => t.spaceId === activeSpaceId);
   const pinnedTabs = currentSpaceTabs.filter(t => t.isPinned);
@@ -120,6 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={tab.id}
                   type="button"
+                  onAuxClick={event => handleTabAuxClick(event, tab.id)}
                   onClick={() => onSelectTab(tab.id)}
                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition relative cursor-pointer border focus-visible:ring-1 focus-visible:ring-blue-500 ${
                     tab.id === activeTabId 
@@ -153,6 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={tab.id}
                 type="button"
+                onAuxClick={event => handleTabAuxClick(event, tab.id)}
                 onClick={() => onSelectTab(tab.id)}
                 className={`w-9 h-9 rounded-lg flex items-center justify-center transition relative cursor-pointer border focus-visible:ring-1 focus-visible:ring-blue-500 ${
                   tab.id === activeTabId 
@@ -318,6 +332,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div
                       key={tab.id}
                       role="listitem"
+                      onAuxClick={event => handleTabAuxClick(event, tab.id)}
                       className={`group relative flex items-center justify-between min-h-[34px] rounded-md text-xs transition ${
                         tab.id === activeTabId
                           ? 'bg-[#202a38] text-white font-medium'
@@ -398,6 +413,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div
                     key={tab.id}
                     role="listitem"
+                    onAuxClick={event => handleTabAuxClick(event, tab.id)}
                     className={`group flex items-center justify-between min-h-[36px] rounded-md text-xs transition ${
                       tab.id === activeTabId
                       ? 'bg-[#202a38] text-[#edf2fa] font-medium shadow-[inset_2px_0_0_#a9c5f3]'

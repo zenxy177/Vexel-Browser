@@ -18,6 +18,7 @@ import {
 } from '../src/utils/browser-logic.ts';
 import { Tab } from '../src/types/index.ts';
 import { isAllowedWebviewSource, isSafeWebUrl, isTrustedAppFrameUrl } from '../electron/security-policy.ts';
+import { getBrowserShortcut } from '../electron/shortcut-logic.ts';
 import { ChromeImporter } from '../electron/chrome-importer.ts';
 import { getChromeProfiles } from '../electron/chrome-profiles.ts';
 import { getPermissionLabel, getSecurePermissionOrigin, isSitePermission } from '../electron/site-permissions.ts';
@@ -30,6 +31,38 @@ import {
 } from '../electron/adblocker-logic.ts';
 
 describe('ZNY Browser Pure Logic Tests', () => {
+  describe('Browser keyboard shortcuts', () => {
+    const shortcut = (key: string, modifiers: Partial<{ control: boolean; meta: boolean; alt: boolean; shift: boolean }> = {}) =>
+      getBrowserShortcut({
+        key,
+        control: modifiers.control ?? true,
+        meta: modifiers.meta ?? false,
+        alt: modifiers.alt ?? false,
+        shift: modifiers.shift ?? false,
+      });
+
+    it('supports tab creation, closing, restoration, and indexed navigation', () => {
+      assert.equal(shortcut('t'), 'new-tab');
+      assert.equal(shortcut('w'), 'close-tab');
+      assert.equal(shortcut('t', { shift: true }), 'reopen-closed-tab');
+      assert.equal(shortcut('4'), 'select-tab-4');
+      assert.equal(shortcut('9'), 'select-last-tab');
+      assert.equal(shortcut('d'), 'bookmark-page');
+      assert.equal(shortcut('d', { shift: true }), 'bookmark-all-tabs');
+      assert.equal(shortcut('Tab'), 'next-tab');
+      assert.equal(shortcut('Tab', { shift: true }), 'previous-tab');
+      assert.equal(shortcut('=', { shift: true }), 'zoom-in');
+    });
+
+    it('maps browser actions without intercepting unrelated page shortcuts', () => {
+      assert.equal(shortcut('r', { shift: true }), 'hard-reload');
+      assert.equal(shortcut('0'), 'zoom-reset');
+      assert.equal(shortcut('c'), null);
+      assert.equal(shortcut('ArrowLeft', { alt: true, control: false }), 'navigate-back');
+      assert.equal(getBrowserShortcut({ key: 'F11', control: false, meta: false, alt: false, shift: false }), 'toggle-fullscreen');
+    });
+  });
+
   describe('Chrome bookmark importer', () => {
     it('discovers bookmark files in custom-named profiles and imports a selected profile folder', () => {
       const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'zny-chrome-import-'));
